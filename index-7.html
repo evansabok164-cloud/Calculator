@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f0f0f;
+      --surface:  #1a1a1a;
+      --card:     #222222;
+      --border:   #2e2e2e;
+      --yellow:   #f5c518;
+      --orange:   #ff7c2a;
+      --red:      #e63946;
+      --white:    #f0ece0;
+      --muted:    #666;
+      --display-font: 'Share Tech Mono', monospace;
+      --body-font: 'Outfit', sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--body-font);
+      padding: 20px;
+    }
+
+    /* ── CALCULATOR SHELL ─────────────────────── */
+    .calc-wrap {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .calc-title {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .calc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px #000,
+        0 32px 80px rgba(0,0,0,.8),
+        inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    /* ── DISPLAY ──────────────────────────────── */
+    .display {
+      padding: 28px 28px 20px;
+      background: #111;
+      border-bottom: 1px solid var(--border);
+      min-height: 130px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      gap: 6px;
+      position: relative;
+    }
+
+    .display-history {
+      font-family: var(--display-font);
+      font-size: 14px;
+      color: var(--muted);
+      min-height: 20px;
+      word-break: break-all;
+      text-align: right;
+      transition: opacity .2s;
+    }
+
+    .display-main {
+      font-family: var(--display-font);
+      font-size: 48px;
+      color: var(--white);
+      line-height: 1;
+      word-break: break-all;
+      text-align: right;
+      transition: font-size .1s;
+    }
+
+    .display-main.shrink   { font-size: 36px; }
+    .display-main.shrink2  { font-size: 26px; }
+    .display-main.shrink3  { font-size: 20px; }
+
+    /* ── HISTORY PANEL ────────────────────────── */
+    .history-panel {
+      display: none;
+      background: #0d0d0d;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .history-panel.open { display: block; }
+    .history-panel h4 {
+      font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 10px;
+    }
+    .history-item {
+      font-family: var(--display-font);
+      font-size: 13px; color: #555;
+      padding: 4px 0; border-bottom: 1px solid #1a1a1a;
+      cursor: pointer; transition: color .15s;
+    }
+    .history-item:hover { color: var(--yellow); }
+    .history-item span  { color: var(--white); margin-left: 6px; }
+    .history-empty { font-size: 12px; color: #333; text-align: center; padding: 8px 0; }
+
+    /* ── MODE TABS ────────────────────────────── */
+    .mode-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .mode-tab {
+      flex: 1; padding: 10px 6px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); background: none; border: none;
+      cursor: pointer; transition: all .2s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .mode-tab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
+
+    /* ── BUTTON GRID ──────────────────────────── */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+    }
+
+    .btn-grid-sci {
+      display: none;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+    }
+    .btn-grid-sci.visible { display: grid; }
+
+    .btn {
+      background: var(--card);
+      border: none;
+      color: var(--white);
+      font-family: var(--body-font);
+      font-size: 18px;
+      font-weight: 400;
+      padding: 20px 10px;
+      cursor: pointer;
+      transition: background .1s, transform .08s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn:active {
+      background: #2e2e2e;
+      transform: scale(.96);
+    }
+
+    /* Button variants */
+    .btn-op    { background: #1e1e1e; color: var(--orange); font-size: 20px; font-weight: 600; }
+    .btn-op:active { background: #2a2a2a; }
+    .btn-eq    { background: var(--yellow); color: #000; font-size: 22px; font-weight: 700; }
+    .btn-eq:active { background: #d4aa14; }
+    .btn-fn    { background: #191919; color: #aaa; font-size: 14px; font-weight: 600; }
+    .btn-fn:active { background: #242424; }
+    .btn-clr   { background: #1c1010; color: var(--red); font-size: 15px; font-weight: 700; }
+    .btn-clr:active { background: #2a1515; }
+    .btn-sci   { background: #111820; color: #6ab0ff; font-size: 13px; font-weight: 600; }
+    .btn-sci:active { background: #1a2535; }
+    .btn-zero  { grid-column: span 2; }
+
+    /* Ripple */
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,.06);
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .btn:active::after { opacity: 1; }
+
+    /* ── BOTTOM BAR ───────────────────────────── */
+    .calc-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: #111;
+      border-top: 1px solid var(--border);
+    }
+    .hist-toggle {
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted); background: none; border: none; cursor: pointer;
+      transition: color .2s;
+    }
+    .hist-toggle:hover { color: var(--yellow); }
+    .deg-toggle {
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted); background: none; border: none; cursor: pointer;
+      transition: color .2s;
+    }
+    .deg-toggle.rad { color: #6ab0ff; }
+
+    /* ── FOOTER ───────────────────────────────── */
+    .calc-footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 11px;
+      color: #333;
+      letter-spacing: 2px;
+    }
+
+    /* ── SCROLLBAR ────────────────────────────── */
+    .history-panel::-webkit-scrollbar { width: 4px; }
+    .history-panel::-webkit-scrollbar-track { background: transparent; }
+    .history-panel::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    @media (max-width: 380px) {
+      .btn { font-size: 16px; padding: 17px 8px; }
+      .btn-fn { font-size: 12px; }
+      .btn-sci { font-size: 11px; }
+      .display-main { font-size: 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="calc-wrap">
+  <div class="calc-title">Calculator</div>
+
+  <div class="calc">
+
+    <!-- Display -->
+    <div class="display">
+      <div class="display-history" id="history-line"></div>
+      <div class="display-main"   id="main-display">0</div>
+    </div>
+
+    <!-- History panel -->
+    <div class="history-panel" id="history-panel">
+      <h4>History</h4>
+      <div id="history-list"><div class="history-empty">No calculations yet</div></div>
+    </div>
+
+    <!-- Mode tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="setMode('basic')">Basic</button>
+      <button class="mode-tab"        onclick="setMode('sci')">Scientific</button>
+      <button class="mode-tab"        onclick="setMode('conv')">Convert</button>
+    </div>
+
+    <!-- Scientific extra row (hidden in basic mode) -->
+    <div class="btn-grid-sci" id="sci-grid">
+      <button class="btn btn-sci" onclick="sciFunc('sin')">sin</button>
+      <button class="btn btn-sci" onclick="sciFunc('cos')">cos</button>
+      <button class="btn btn-sci" onclick="sciFunc('tan')">tan</button>
+      <button class="btn btn-sci" onclick="sciFunc('log')">log</button>
+      <button class="btn btn-sci" onclick="sciFunc('ln')">ln</button>
+      <button class="btn btn-sci" onclick="sciFunc('sqrt')">√</button>
+      <button class="btn btn-sci" onclick="sciFunc('sq')">x²</button>
+      <button class="btn btn-sci" onclick="sciFunc('inv')">1/x</button>
+      <button class="btn btn-sci" onclick="inputChar('(')"> ( </button>
+      <button class="btn btn-sci" onclick="inputChar(')')"> ) </button>
+      <button class="btn btn-sci" onclick="sciFunc('pi')">π</button>
+      <button class="btn btn-sci" onclick="sciFunc('e')">e</button>
+    </div>
+
+    <!-- Converter panel (hidden) -->
+    <div id="conv-panel" style="display:none; padding:20px; background:#111;">
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">From</label>
+        <select id="conv-from" style="width:100%;background:#1a1a1a;border:1px solid var(--border);color:var(--white);font-family:var(--body-font);font-size:14px;padding:10px 12px;border-radius:8px;outline:none;">
+          <optgroup label="Length">
+            <option value="km">Kilometres</option>
+            <option value="m">Metres</option>
+            <option value="cm">Centimetres</option>
+            <option value="mi">Miles</option>
+            <option value="ft">Feet</option>
+            <option value="in">Inches</option>
+          </optgroup>
+          <optgroup label="Weight">
+            <option value="kg">Kilograms</option>
+            <option value="g">Grams</option>
+            <option value="lb">Pounds</option>
+            <option value="oz">Ounces</option>
+          </optgroup>
+          <optgroup label="Temperature">
+            <option value="c">Celsius</option>
+            <option value="f">Fahrenheit</option>
+            <option value="k">Kelvin</option>
+          </optgroup>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">To</label>
+        <select id="conv-to" style="width:100%;background:#1a1a1a;border:1px solid var(--border);color:var(--white);font-family:var(--body-font);font-size:14px;padding:10px 12px;border-radius:8px;outline:none;">
+          <optgroup label="Length">
+            <option value="km">Kilometres</option>
+            <option value="m">Metres</option>
+            <option value="cm">Centimetres</option>
+            <option value="mi">Miles</option>
+            <option value="ft" selected>Feet</option>
+            <option value="in">Inches</option>
+          </optgroup>
+          <optgroup label="Weight">
+            <option value="kg">Kilograms</option>
+            <option value="g">Grams</option>
+            <option value="lb">Pounds</option>
+            <option value="oz">Ounces</option>
+          </optgroup>
+          <optgroup label="Temperature">
+            <option value="c">Celsius</option>
+            <option value="f">Fahrenheit</option>
+            <option value="k">Kelvin</option>
+          </optgroup>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">Value</label>
+        <input id="conv-input" type="number" placeholder="Enter value" style="width:100%;background:#1a1a1a;border:1px solid var(--border);color:var(--white);font-family:var(--body-font);font-size:14px;padding:10px 12px;border-radius:8px;outline:none;" oninput="doConvert()" />
+      </div>
+      <div id="conv-result" style="font-family:var(--display-font);font-size:26px;color:var(--yellow);text-align:center;padding:16px;background:#0d0d0d;border-radius:10px;border:1px solid var(--border);min-height:60px;">—</div>
+    </div>
+
+    <!-- Main button grid -->
+    <div class="btn-grid" id="main-grid">
+      <!-- Row 1 -->
+      <button class="btn btn-fn"  onclick="clearAll()">AC</button>
+      <button class="btn btn-fn"  onclick="toggleSign()">+/−</button>
+      <button class="btn btn-fn"  onclick="percent()">%</button>
+      <button class="btn btn-op"  onclick="inputOp('/')">÷</button>
+      <!-- Row 2 -->
+      <button class="btn" onclick="inputChar('7')">7</button>
+      <button class="btn" onclick="inputChar('8')">8</button>
+      <button class="btn" onclick="inputChar('9')">9</button>
+      <button class="btn btn-op" onclick="inputOp('*')">×</button>
+      <!-- Row 3 -->
+      <button class="btn" onclick="inputChar('4')">4</button>
+      <button class="btn" onclick="inputChar('5')">5</button>
+      <button class="btn" onclick="inputChar('6')">6</button>
+      <button class="btn btn-op" onclick="inputOp('-')">−</button>
+      <!-- Row 4 -->
+      <button class="btn" onclick="inputChar('1')">1</button>
+      <button class="btn" onclick="inputChar('2')">2</button>
+      <button class="btn" onclick="inputChar('3')">3</button>
+      <button class="btn btn-op" onclick="inputOp('+')">+</button>
+      <!-- Row 5 -->
+      <button class="btn btn-zero" onclick="inputChar('0')">0</button>
+      <button class="btn" onclick="inputDot()">.</button>
+      <button class="btn btn-eq"  onclick="calculate()">=</button>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="calc-bottom">
+      <button class="hist-toggle" onclick="toggleHistory()">⏱ History</button>
+      <button class="btn btn-fn" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:14px;color:var(--muted);cursor:pointer;" onclick="backspace()">⌫</button>
+      <button class="deg-toggle" id="deg-btn" onclick="toggleDeg()">DEG</button>
+    </div>
+
+  </div>
+
+  <div class="calc-footer">MADE WITH ❤ FOR GITHUB PAGES</div>
+</div>
+
+<script>
+  // ── STATE ──────────────────────────────────────────────────
+  let current     = '0';
+  let expression  = '';
+  let justCalc    = false;
+  let historyLog  = [];
+  let useDeg      = true;
+  let currentMode = 'basic';
+
+  // ── DISPLAY ────────────────────────────────────────────────
+  function updateDisplay() {
+    const el = document.getElementById('main-display');
+    el.textContent = current;
+    // Auto-shrink font for long numbers
+    el.className = 'display-main';
+    const len = current.length;
+    if      (len > 16) el.classList.add('shrink3');
+    else if (len > 12) el.classList.add('shrink2');
+    else if (len >  9) el.classList.add('shrink');
+
+    document.getElementById('history-line').textContent = expression;
+  }
+
+  // ── INPUT ──────────────────────────────────────────────────
+  function inputChar(ch) {
+    if (justCalc) { current = ''; expression = ''; justCalc = false; }
+    if (current === '0' && ch !== '.') current = '';
+    if (current.length >= 20) return;
+    current += ch;
+    updateDisplay();
+  }
+
+  function inputDot() {
+    if (justCalc) { current = '0'; expression = ''; justCalc = false; }
+    if (current.includes('.')) return;
+    if (current === '') current = '0';
+    current += '.';
+    updateDisplay();
+  }
+
+  function inputOp(op) {
+    justCalc = false;
+    const opSymbols = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+    expression = (expression || current) + ' ' + opSymbols[op] + ' ';
+    // Store raw op for eval
+    expression._raw = (expression._raw || current) + op;
+    current = '';
+    // Keep raw expression for calculation
+    window._rawExpr = (window._rawExpr || (isNaN(parseFloat(current)) ? expression : current)) ;
+    window._rawExpr = ((justCalc ? window._lastResult : (window._pendingLeft || current)) ) + op;
+    window._pendingLeft = window._pendingLeft ? window._pendingLeft + op + current : current;
+    window._pendingOp   = op;
+    updateDisplay();
+  }
+
+  // ── CLEAR ──────────────────────────────────────────────────
+  function clearAll() {
+    current    = '0';
+    expression = '';
+    justCalc   = false;
+    window._pendingLeft = '';
+    window._pendingOp   = '';
+    updateDisplay();
+  }
+
+  function backspace() {
+    if (justCalc) { clearAll(); return; }
+    current = current.slice(0, -1) || '0';
+    updateDisplay();
+  }
+
+  // ── CALCULATE ──────────────────────────────────────────────
+  function calculate() {
+    if (!window._pendingOp || current === '') return;
+
+    const left  = parseFloat(window._pendingLeft.split(/[\+\-\*\/]/).pop() || window._pendingLeft) || parseFloat(expression) || 0;
+    const right = parseFloat(current);
+    const op    = window._pendingOp;
+    let result;
+
+    try {
+      // Build safe expression
+      const expr = window._pendingLeft + op + current;
+      // Evaluate safely
+      result = safeEval(expr);
+    } catch(e) {
+      current = 'Error';
+      updateDisplay();
+      return;
+    }
+
+    const histExpr = expression + current;
+    result = parseFloat(result.toPrecision(12));
+    // Clean floating point
+    result = +result.toFixed(10);
+
+    addHistory(histExpr, result);
+
+    expression          = histExpr + ' =';
+    current             = String(result);
+    window._pendingLeft = '';
+    window._pendingOp   = '';
+    window._lastResult  = result;
+    justCalc            = true;
+    updateDisplay();
+  }
+
+  // Safe evaluator — only allows numbers and operators
+  function safeEval(expr) {
+    // Replace display symbols with operators
+    expr = expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-');
+    if (!/^[\d\s\+\-\*\/\.\(\)e]+$/.test(expr)) throw new Error('Invalid');
+    return Function('"use strict"; return (' + expr + ')')();
+  }
+
+  // ── TOGGLE SIGN & PERCENT ──────────────────────────────────
+  function toggleSign() {
+    if (current === '0' || current === '') return;
+    current = current.startsWith('-') ? current.slice(1) : '-' + current;
+    updateDisplay();
+  }
+
+  function percent() {
+    const val = parseFloat(current);
+    if (isNaN(val)) return;
+    current = String(val / 100);
+    updateDisplay();
+  }
+
+  // ── SCIENTIFIC FUNCTIONS ───────────────────────────────────
+  function sciFunc(fn) {
+    let val = parseFloat(current);
+    if (isNaN(val) && fn !== 'pi' && fn !== 'e') return;
+    let result;
+    const toRad = useDeg ? (v => v * Math.PI / 180) : (v => v);
+
+    switch(fn) {
+      case 'sin':  result = Math.sin(toRad(val));  break;
+      case 'cos':  result = Math.cos(toRad(val));  break;
+      case 'tan':  result = Math.tan(toRad(val));  break;
+      case 'log':  result = Math.log10(val);        break;
+      case 'ln':   result = Math.log(val);          break;
+      case 'sqrt': result = Math.sqrt(val);         break;
+      case 'sq':   result = val * val;              break;
+      case 'inv':  result = 1 / val;                break;
+      case 'pi':   result = Math.PI;               break;
+      case 'e':    result = Math.E;                break;
+    }
+
+    result = parseFloat(result.toPrecision(10));
+    addHistory(fn + '(' + (fn === 'pi' || fn === 'e' ? '' : val) + ')', result);
+    expression = fn + '(' + (fn === 'pi' || fn === 'e' ? '' : val) + ') =';
+    current    = String(result);
+    justCalc   = true;
+    updateDisplay();
+  }
+
+  // ── HISTORY ────────────────────────────────────────────────
+  function addHistory(expr, result) {
+    historyLog.unshift({ expr, result });
+    if (historyLog.length > 20) historyLog.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('history-list');
+    if (historyLog.length === 0) {
+      list.innerHTML = '<div class="history-empty">No calculations yet</div>';
+      return;
+    }
+    list.innerHTML = historyLog.map((h, i) =>
+      `<div class="history-item" onclick="recallHistory(${i})">${h.expr} <span>= ${h.result}</span></div>`
+    ).join('');
+  }
+
+  function recallHistory(i) {
+    current  = String(historyLog[i].result);
+    justCalc = false;
+    updateDisplay();
+  }
+
+  function toggleHistory() {
+    const panel = document.getElementById('history-panel');
+    panel.classList.toggle('open');
+  }
+
+  // ── MODE SWITCHING ─────────────────────────────────────────
+  function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-tab').forEach((t, i) => {
+      t.classList.toggle('active', ['basic','sci','conv'][i] === mode);
+    });
+    document.getElementById('sci-grid').classList.toggle('visible', mode === 'sci');
+    document.getElementById('main-grid').style.display  = mode === 'conv' ? 'none' : 'grid';
+    document.getElementById('conv-panel').style.display = mode === 'conv' ? 'block' : 'none';
+  }
+
+  // ── DEG / RAD ──────────────────────────────────────────────
+  function toggleDeg() {
+    useDeg = !useDeg;
+    const btn = document.getElementById('deg-btn');
+    btn.textContent = useDeg ? 'DEG' : 'RAD';
+    btn.classList.toggle('rad', !useDeg);
+  }
+
+  // ── UNIT CONVERTER ─────────────────────────────────────────
+  function doConvert() {
+    const val  = parseFloat(document.getElementById('conv-input').value);
+    const from = document.getElementById('conv-from').value;
+    const to   = document.getElementById('conv-to').value;
+    const out  = document.getElementById('conv-result');
+
+    if (isNaN(val)) { out.textContent = '—'; return; }
+
+    let result;
+    try { result = convert(val, from, to); }
+    catch(e) { out.textContent = 'Incompatible units'; return; }
+
+    out.textContent = parseFloat(result.toPrecision(8)) + ' ' + to.toUpperCase();
+  }
+
+  function convert(val, from, to) {
+    // Convert to base unit first, then to target
+    const toBase = {
+      // Length → metres
+      km: v => v * 1000, m: v => v, cm: v => v / 100,
+      mi: v => v * 1609.344, ft: v => v * 0.3048, in: v => v * 0.0254,
+      // Weight → kg
+      kg: v => v, g: v => v / 1000, lb: v => v * 0.453592, oz: v => v * 0.0283495,
+      // Temp (special)
+      c: v => v, f: v => (v - 32) * 5/9, k: v => v - 273.15,
+    };
+    const fromBase = {
+      km: v => v / 1000, m: v => v, cm: v => v * 100,
+      mi: v => v / 1609.344, ft: v => v / 0.3048, in: v => v / 0.0254,
+      kg: v => v, g: v => v * 1000, lb: v => v / 0.453592, oz: v => v / 0.0283495,
+      c: v => v, f: v => v * 9/5 + 32, k: v => v + 273.15,
+    };
+
+    const lengthUnits = ['km','m','cm','mi','ft','in'];
+    const weightUnits = ['kg','g','lb','oz'];
+    const tempUnits   = ['c','f','k'];
+
+    const getGroup = u => {
+      if (lengthUnits.includes(u)) return 'length';
+      if (weightUnits.includes(u)) return 'weight';
+      if (tempUnits.includes(u))   return 'temp';
+    };
+
+    if (getGroup(from) !== getGroup(to)) throw new Error('Incompatible');
+    return fromBase[to](toBase[from](val));
+  }
+
+  // ── KEYBOARD SUPPORT ───────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (currentMode === 'conv') return;
+    const key = e.key;
+    if (key >= '0' && key <= '9') inputChar(key);
+    else if (key === '.')                   inputDot();
+    else if (key === '+')                   inputOp('+');
+    else if (key === '-')                   inputOp('-');
+    else if (key === '*')                   inputOp('*');
+    else if (key === '/')   { e.preventDefault(); inputOp('/'); }
+    else if (key === 'Enter' || key === '=') calculate();
+    else if (key === 'Backspace')            backspace();
+    else if (key === 'Escape')               clearAll();
+    else if (key === '%')                    percent();
+  });
+
+  // ── INIT ───────────────────────────────────────────────────
+  updateDisplay();
+</script>
+</body>
+</html>
